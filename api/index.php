@@ -198,24 +198,48 @@ function evaluateExam()
 {
     require "config.php";
     $json = json_decode(file_get_contents("php://input"), true);
-
-    // $json = array("ans0"=>"AMD","ans1"=>"Oracle","ans2"=>"Solaris",
-    // "ans3"=>"C","ans4"=>"Perl y Java","email"=>"miguelescom@gmail.com" );
+    $idExamen = $json["id"];
     $email = $json["email"];
     $respuestas = [];
-
+    $idRespuestas = [];
     $idPreguntas = [];
+
     foreach ($json as $x => $x_value) {
-        if ($x != "email") {
-            $query = mysqli_query(
-                $db,
-                "SELECT * FROM incisos WHERE opciones='$x_value' "
-            );
-            $row = $query->fetch_assoc();
-            array_push($respuestas, $row["idOpciones"]);
-            array_push($idPreguntas, $row["idPregunta"]);
+        if ($x != "email" && $x!="id") {
+            array_push($respuestas, strval($x_value));
         }
     }
+    $query = mysqli_query(
+        $db,
+        "SELECT * FROM pregunta WHERE idExamen='$idExamen' "
+    );
+
+    while ($row = mysqli_fetch_array($query)) {
+        $idPregunta = $row["idPregunta"];
+        array_push($idPreguntas, $idPregunta);
+    }
+
+    $len = count($respuestas);
+    for($i=0;$i<$len;$i++){
+        $query = mysqli_query(
+            $db,
+            "SELECT * FROM incisos WHERE opciones='$respuestas[$i]' and idPregunta='$idPreguntas[$i]'"
+        );
+        $row = $query->fetch_assoc();
+        array_push($idRespuestas, $row["idOpciones"]);
+
+    }
+    // foreach ($json as $x => $x_value) {
+        // if ($x != "email" && $x!="idExamen") {
+            // $query = mysqli_query(
+                // $db,
+                // "SELECT * FROM incisos WHERE opciones='$x_value' "
+            // );
+            // $row = $query->fetch_assoc();
+            // array_push($respuestas, $row["idOpciones"]);
+            // array_push($idPreguntas, $row["idPregunta"]);
+        // }
+    // }
 
     $count = count($respuestas);
     $calificacion = 0;
@@ -226,17 +250,17 @@ function evaluateExam()
         );
         $row = $query->fetch_assoc();
         $respuesta = $row["idRespuesta"];
-        if ($respuesta == $respuestas[$i]) {
+        if ($respuesta == $idRespuestas[$i]) {
             $calificacion++;
         }
     }
 
-    $query = mysqli_query(
-        $db,
-        "SELECT idExamen FROM pregunta WHERE idPregunta='$idPreguntas[0]' "
-    );
-    $row = $query->fetch_assoc();
-    $idExamen = $row["idExamen"];
+    // // $query = mysqli_query(
+        // // $db,
+        // // "SELECT idExamen FROM pregunta WHERE idPregunta='$idPreguntas[0]' "
+    // // );
+    // // $row = $query->fetch_assoc();
+    // // $idExamen = $row["idExamen"];
     $query = mysqli_query(
         $db,
         "SELECT * FROM examen WHERE idExamen='$idExamen' "
@@ -259,7 +283,8 @@ function evaluateExam()
             "update calificacion set calificacion='$calificacion', respuestaCorrecta = '$calificacion', fecha= NOW() where idExamen='$idExamen' and email = '$email'"
         );
     }
-    echo '{"exam":' . $calificacion . "}";
+   $test = json_encode($idRespuestas[0]);
+   echo '{"exam":' . $test . "}";
 }
 
 // evaluateExam();
